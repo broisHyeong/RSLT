@@ -1,0 +1,22 @@
+{
+    "rooms": {
+        "room1": {
+        "messages": {
+            "message1": {
+            "sender": "user1",
+            "content": "Hello, world!",
+            "timestamp": 1672531200000
+            }
+        }
+        },
+    "room2": {
+        "messages": {
+        "message1": {
+            "sender": "user2",
+            "content": "Hi there!",
+            "timestamp": 1672531300000
+        }
+        }
+    }
+    }
+}

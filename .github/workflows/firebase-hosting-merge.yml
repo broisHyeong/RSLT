@@ -32,3 +32,5 @@ jobs:
       - name: Deploy to Firebase Realtime Database
         run: |
           firebase database:set /initial_data.json --project realtime-signlang-app
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: firebaseServiceAccountKey.json
