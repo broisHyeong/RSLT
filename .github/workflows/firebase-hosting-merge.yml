@@ -28,7 +28,12 @@ jobs:
         run: |
           firebase --version || echo "❌ Firebase CLI installation failed!"
 
-      # 5. Firebase Realtime Database에 데이터 배포 (예: 초기화 데이터)
+      # 5. Firebase 서비스 계정 키 JSON 파일 생성
+      - name: Create Firebase Service Account Key
+        run: |
+          printf '%s' "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebaseServiceAccountKey.json
+
+      # 6. Firebase Realtime Database에 데이터 배포
       - name: Deploy to Firebase Realtime Database
         run: |
           firebase database:set /initial_data.json --project realtime-signlang-app
