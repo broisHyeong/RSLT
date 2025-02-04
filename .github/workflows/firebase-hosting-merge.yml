@@ -31,4 +31,4 @@ jobs:
       # 5. Firebase Realtime Database에 데이터 배포 (예: 초기화 데이터)
       - name: Deploy to Firebase Realtime Database
         run: |
-          firebase database:set /initial_data.json --project realtime-signlang-app --confirm
+          firebase database:set /initial_data.json --project realtime-signlang-app
