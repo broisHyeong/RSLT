@@ -1,0 +1,84 @@
+name: Deploy to Firebase Hosting on merge
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Check jq installation on GitHub Actions
+        run: |
+          jq --version
+
+      # 🔥 DEBUG: GitHub Secrets의 FIREBASE_SERVICE_ACCOUNT 내용 확인 (나중에 삭제할 것)
+     # - name: Debug Secrets (REMOVE AFTER DEBUGGING)
+      #  run: |
+       #   echo "FIREBASE_SERVICE_ACCOUNT CONTENT:"
+        #  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+
+      # Firebase 서비스 계정 키 JSON 생성
+      - name: Create Firebase Service Account Key
+        run: |
+          printf '%s' "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebaseServiceAccountKey.json
+
+
+      # 🔥 DEBUG: 생성된 JSON 파일 내용 출력 (나중에 삭제할 것)
+     # - name: Show firebaseServiceAccountKey.json (REMOVE AFTER DEBUGGING)
+      #  run: |
+       #   echo "🔥 FIREBASE SERVICE ACCOUNT JSON CONTENT 🔥"
+        #  cat firebaseServiceAccountKey.json
+
+      # JSON 형식 검증
+      - name: Validate JSON Format
+        run: |
+          cat firebaseServiceAccountKey.json | jq .
+
+      # JSON 필드 검증 (client_email, private_key 필수 확인)
+      - name: Verify Service Account Fields
+        run: |
+          echo "🔍 Checking JSON fields..."
+          CLIENT_EMAIL=$(jq -r '.client_email' firebaseServiceAccountKey.json)
+          PRIVATE_KEY=$(jq -r '.private_key' firebaseServiceAccountKey.json)
+
+          if [[ -z "$CLIENT_EMAIL" || -z "$PRIVATE_KEY" ]]; then
+            echo "❌ Error: Missing required fields in firebaseServiceAccountKey.json!"
+            exit 1
+          else
+            echo "✅ Service account key looks valid."
+          fi
+
+      - name: Install Firebase CLI
+        run: |
+          npm install -g firebase-tools
+
+      - name: Verify Firebase CLI Installation
+        run: |
+          firebase --version
+
+      # 🔥 DEBUG: Firebase 인증 테스트 (배포 전에 Firebase CLI가 로그인 상태인지 확인)
+      #- name: Check Firebase Authentication (REMOVE AFTER DEBUGGING)
+        # run: |
+          #  firebase list --json
+
+      # Firebase CLI 설치 확인
+      - name: Verify Firebase CLI Installation
+        run: |
+          npm install -g firebase-tools@13.29.3
+          firebase --version || echo "❌ Firebase CLI installation failed!!"
+
+      # Firebase Hosting 배포
+      - name: Deploy to Firebase Hosting
+        run: |
+          firebase deploy --only hosting --project realtime-signlang-app --debug
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: firebaseServiceAccountKey.json
