@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { ref, onValue, push, set } from 'firebase/database';
+import { auth, database as db } from '../../../lib/firebase'; // firebase.ts에서 import
 import ChatMessage from '@/app/components/ChatMessage';
 
 interface Message {
@@ -11,42 +12,40 @@ interface Message {
   timestamp: number;
 }
 
-export default function ChatRoom({ params }: { params: Promise<{ roomId: string }> }) {
-  const [roomId, setRoomId] = useState<string | null>(null);  
+export default function ChatRoom({ params }: { params: { roomId: string } }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const roomId = params.roomId;
 
   useEffect(() => {
-    params.then(({ roomId }) => setRoomId(roomId)); // Promise를 언래핑
-  }, [params]);
+    if (!roomId) return;
 
-  useEffect(() => {
-    if (roomId) {
-      const newSocket = io('http://localhost:3000');
-      setSocket(newSocket);
-
-      newSocket.emit('join', roomId);
-
-      newSocket.on('message', (message: Message) => {
-        setMessages((prev) => [...prev, message]);
-      });
-
-      return () => {
-        newSocket.close();
-      };
-    }
+    const messagesRef = ref(db, `rooms/${roomId}/messages`);
+    onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const formattedMessages = Object.entries(data).map(([key, value]: any) => ({
+          id: key,
+          ...value,
+        }));
+        setMessages(formattedMessages);
+      }
+    });
   }, [roomId]);
 
   const sendMessage = () => {
-    if (newMessage.trim() && socket) {
-      const message: Message = {
-        id: Date.now().toString(),
+    if (newMessage.trim()) {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+      const messageRef = push(ref(db, `rooms/${roomId}/messages`));
+      set(messageRef, {
         text: newMessage,
-        sender: 'user',
+        sender: currentUser.email || currentUser.uid, // 이메일 또는 uid 저장
         timestamp: Date.now(),
-      };
-      socket.emit('message', message);
+      });
       setNewMessage('');
     }
   };
