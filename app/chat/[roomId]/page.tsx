@@ -12,10 +12,15 @@ interface Message {
   timestamp: number;
 }
 
-export default function ChatRoom({ params }: { params: { roomId: string } }) {
+export default function ChatRoom({ params }: { params: Promise<{ roomId: string }> }) {
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const roomId = params.roomId;
+
+  useEffect(() => {
+    // params가 Promise이므로 값을 추출
+    params.then(({ roomId }) => setRoomId(roomId));
+  }, [params]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -24,9 +29,9 @@ export default function ChatRoom({ params }: { params: { roomId: string } }) {
     onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const formattedMessages = Object.entries(data).map(([key, value]: any) => ({
+        const formattedMessages = Object.entries(data).map(([key, value]) => ({
+          ...(value as Message),
           id: key,
-          ...value,
         }));
         setMessages(formattedMessages);
       }
@@ -43,7 +48,7 @@ export default function ChatRoom({ params }: { params: { roomId: string } }) {
       const messageRef = push(ref(db, `rooms/${roomId}/messages`));
       set(messageRef, {
         text: newMessage,
-        sender: currentUser.email || currentUser.uid, // 이메일 또는 uid 저장
+        sender: currentUser.email || currentUser.uid,
         timestamp: Date.now(),
       });
       setNewMessage('');

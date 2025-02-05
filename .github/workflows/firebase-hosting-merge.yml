@@ -36,6 +36,6 @@ jobs:
       # 6. Firebase Realtime Database 연결 확인
       - name: Test Firebase Realtime Database Connection
         run: |
-          firebase database:get // --project realtime-signlang-app
+          firebase database:get / --project realtime-signlang-app
         env:
           GOOGLE_APPLICATION_CREDENTIALS: firebaseServiceAccountKey.json
