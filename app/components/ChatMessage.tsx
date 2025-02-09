@@ -1,9 +1,11 @@
 'use client';
 
+import { auth } from '../../lib/firebase';
+
 interface Message {
   id: string;
   text: string;
-  sender: string;
+  sender: string; // 메시지 보낸 사람 (이메일)
   timestamp: number;
 }
 
@@ -12,8 +14,13 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message }: ChatMessageProps) {
-  const isMyMessage = message.sender === 'user';
-  
+  // 현재 사용자의 이메일
+  const currentUserEmail = auth.currentUser?.email;
+
+  // 본인의 메시지인지 확인
+  const isMyMessage = message.sender === currentUserEmail;
+
+  // 시간 포맷팅 함수
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('ko-KR', {
