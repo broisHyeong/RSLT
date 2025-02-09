@@ -16,25 +16,25 @@ export default function ChatRoom({ roomId }: { roomId: string }) {
   const [newMessage, setNewMessage] = useState(''); // 새 메시지 입력 상태 관리
 
   useEffect(() => {
-    const messagesRef = ref(database, `chats/${roomId}/messages`);
+    const messagesRef = ref(database, `rooms/${roomId}/messages`); 
 
     // Firebase Realtime Database에서 실시간으로 메시지 수신
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         // 데이터를 배열 형태로 변환
-        const messageList: Message[] = Object.entries(data as Record<string, Message>).map(
-          ([key, value]) => ({
+        const messageList: Message[] = Object.entries(data).map(([key, value]) => {
+          const message = value as Message; // 명시적으로 Message로 캐스팅
+          return {
             id: key,
-            text: value.text,
-            sender: value.sender,
-            timestamp: value.timestamp,
-          })
-        );
-        // 메시지 상태 업데이트
+            text: message.text,
+            sender: message.sender,
+            timestamp: message.timestamp,
+          };
+        });
         setMessages(messageList);
       } else {
-        setMessages([]); // 메시지가 없으면 빈 배열로 설정
+        setMessages([]); // 데이터가 없을 경우 빈 배열로 설정
       }
     });
 
@@ -44,7 +44,7 @@ export default function ChatRoom({ roomId }: { roomId: string }) {
   const sendMessage = async () => {
     if (!newMessage.trim() || !auth.currentUser) return;
 
-    const messagesRef = ref(database, `chats/${roomId}/messages`);
+    const messagesRef = ref(database, `rooms/${roomId}/messages`);
     const newMessageRef = push(messagesRef);
 
     await set(newMessageRef, {

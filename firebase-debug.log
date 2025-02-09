@@ -1,0 +1,94 @@
+[debug] [2025-02-06T06:19:41.545Z] ----------------------------------------------------------------------
+[debug] [2025-02-06T06:19:41.549Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\user\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js database:set / --project realtime-signlang-app {
+  "users": {
+    "user1_uid": {
+      "rooms": {
+        "room1_id": {
+          "name": "대화방 1",
+          "timestamp": 1707058385000
+        },
+        "room2_id": {
+          "name": "대화방 2",
+          "timestamp": 1707058390000
+        }
+      }
+    },
+    "user2_uid": {
+      "rooms": {
+        "room1_id": {
+          "name": "대화방 1",
+          "timestamp": 1707058385000
+        }
+      }
+    }
+  },
+  "rooms": {
+    "room1_id": {
+      "name": "대화방 1",
+      "messages": {
+        "msg1": {
+          "content": "안녕하세요",
+          "sender": "user1",
+          "timestamp": 1707058385000
+        },
+        "msg2": {
+          "content": "반갑습니다",
+          "sender": "user2",
+          "timestamp": 1707058390000
+        }
+      }
+    },
+    "room2_id": {
+      "name": "대화방 2",
+      "messages": {
+        "msg1": {
+          "content": "테스트 메시지입니다",
+          "sender": "user1",
+          "timestamp": 1707058395000
+        }
+      }
+    }
+  }
+}
+[debug] [2025-02-06T06:19:41.549Z] CLI Version:   13.29.3
+[debug] [2025-02-06T06:19:41.549Z] Platform:      win32
+[debug] [2025-02-06T06:19:41.549Z] Node Version:  v22.13.0
+[debug] [2025-02-06T06:19:41.550Z] Time:          Thu Feb 06 2025 15:19:41 GMT+0900 (대한민국 표준시)
+[debug] [2025-02-06T06:19:41.550Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-02-06T06:19:41.560Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-02-06T06:19:41.853Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-02-06T06:19:41.853Z] > authorizing via signed-in user (limminhyeong@gmail.com)
+[debug] [2025-02-06T06:19:41.853Z] [iam] checking project realtime-signlang-app for permissions ["firebase.projects.get","firebasedatabase.instances.update"]
+[debug] [2025-02-06T06:19:41.855Z] Checked if tokens are valid: false, expires at: 1738731413764
+[debug] [2025-02-06T06:19:41.855Z] Checked if tokens are valid: false, expires at: 1738731413764
+[debug] [2025-02-06T06:19:41.855Z] > refreshing access token with scopes: []
+[debug] [2025-02-06T06:19:41.856Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-02-06T06:19:41.856Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-02-06T06:19:42.170Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-02-06T06:19:42.171Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-02-06T06:19:42.201Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/realtime-signlang-app:testIamPermissions [none]
+[debug] [2025-02-06T06:19:42.202Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/realtime-signlang-app:testIamPermissions x-goog-quota-user=projects/realtime-signlang-app
+[debug] [2025-02-06T06:19:42.202Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/realtime-signlang-app:testIamPermissions {"permissions":["firebase.projects.get","firebasedatabase.instances.update"]}
+[debug] [2025-02-06T06:19:42.260Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-02-06T06:19:42.260Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2025-02-06T06:19:43.349Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/realtime-signlang-app:testIamPermissions 200
+[debug] [2025-02-06T06:19:43.349Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/realtime-signlang-app:testIamPermissions {"permissions":["firebase.projects.get","firebasedatabase.instances.update"]}
+[debug] [2025-02-06T06:19:43.349Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:43.349Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:43.350Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/realtime-signlang-app [none]
+[debug] [2025-02-06T06:19:43.764Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/realtime-signlang-app 200
+[debug] [2025-02-06T06:19:43.765Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/realtime-signlang-app {"projectId":"realtime-signlang-app","projectNumber":"749749367342","displayName":"Realtime SignLang app","name":"projects/realtime-signlang-app","resources":{"hostingSite":"realtime-signlang-app","realtimeDatabaseInstance":"realtime-signlang-app-default-rtdb"},"state":"ACTIVE","etag":"1_0e9a62e5-6bec-49d1-bd02-9bf35ac2226c"}
+[debug] [2025-02-06T06:19:43.766Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:43.766Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:43.766Z] >>> [apiv2][query] GET https://firebasedatabase.googleapis.com/v1beta/projects/realtime-signlang-app/locations/-/instances/realtime-signlang-app-default-rtdb [none]
+[debug] [2025-02-06T06:19:45.269Z] <<< [apiv2][status] GET https://firebasedatabase.googleapis.com/v1beta/projects/realtime-signlang-app/locations/-/instances/realtime-signlang-app-default-rtdb 200
+[debug] [2025-02-06T06:19:45.269Z] <<< [apiv2][body] GET https://firebasedatabase.googleapis.com/v1beta/projects/realtime-signlang-app/locations/-/instances/realtime-signlang-app-default-rtdb {"name":"projects/749749367342/locations/asia-southeast1/instances/realtime-signlang-app-default-rtdb","project":"projects/749749367342","databaseUrl":"https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app","type":"DEFAULT_DATABASE","state":"ACTIVE"}
+[debug] [2025-02-06T06:19:51.154Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:51.155Z] Checked if tokens are valid: true, expires at: 1738826381171
+[debug] [2025-02-06T06:19:51.155Z] >>> [apiv2][query] PUT https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json 
+[debug] [2025-02-06T06:19:51.155Z] >>> [apiv2][body] PUT https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json [stream]
+[debug] [2025-02-06T06:20:51.351Z] *** [apiv2] error from fetch(https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json, {"headers":{},"method":"PUT","body":{"fd":null,"path":"{\n  \"users\": {\n    \"user1_uid\": {\n      \"rooms\": {\n        \"room1_id\": {\n          \"name\": \"대화방 1\",\n          \"timestamp\": 1707058385000\n        },\n        \"room2_id\": {\n          \"name\": \"대화방 2\",\n          \"timestamp\": 1707058390000\n        }\n      }\n    },\n    \"user2_uid\": {\n      \"rooms\": {\n        \"room1_id\": {\n          \"name\": \"대화방 1\",\n          \"timestamp\": 1707058385000\n        }\n      }\n    }\n  },\n  \"rooms\": {\n    \"room1_id\": {\n      \"name\": \"대화방 1\",\n      \"messages\": {\n        \"msg1\": {\n          \"content\": \"안녕하세요\",\n          \"sender\": \"user1\",\n          \"timestamp\": 1707058385000\n        },\n        \"msg2\": {\n          \"content\": \"반갑습니다\",\n          \"sender\": \"user2\",\n          \"timestamp\": 1707058390000\n        }\n      }\n    },\n    \"room2_id\": {\n      \"name\": \"대화방 2\",\n      \"messages\": {\n        \"msg1\": {\n          \"content\": \"테스트 메시지입니다\",\n          \"sender\": \"user1\",\n          \"timestamp\": 1707058395000\n        }\n      }\n    }\n  }\n}","flags":"r","mode":438,"end":null,"bytesRead":0,"_events":{},"_readableState":{"highWaterMark":65536,"buffer":[],"bufferIndex":0,"length":0,"pipes":[],"awaitDrainWriters":null},"_eventsCount":2}}): FetchError: request to https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json failed, reason: socket hang up
+[debug] [2025-02-06T06:20:51.352Z] Failed to make request to https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json
+[error] 
+[error] Error: Unexpected error while setting data: Failed to make request to https://realtime-signlang-app-default-rtdb.asia-southeast1.firebasedatabase.app/.json
