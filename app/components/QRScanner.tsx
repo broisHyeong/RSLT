@@ -26,7 +26,7 @@ const createRoom = async (scannedUserId: string) => {
       : `${scannedUserId}_${currentUser.uid}`;
 
   console.log('생성된 roomId:', roomId); // 생성된 방 ID 확인
-  
+
   // 대화방 데이터 확인
   const roomRef = ref(db, `rooms/${roomId}`);
   const roomSnapshot = await get(roomRef); // ✅ 방 존재 여부 확인
@@ -81,26 +81,27 @@ export default function QRScanner({ onQRCodeScanned }: QRScannerProps) {
       try {
         const video = webcamRef.current?.video;
         if (!video) return;
-    
+
         const result = await codeReader.decodeFromVideoElement(video);
         if (result) {
           const scannedData = result.getText();
-          
+
           // ✅ QR 코드 데이터 검증 (올바른 ID 형식인지 확인)
           if (!scannedData || scannedData.length < 5) {
             alert('잘못된 QR 코드입니다.');
             setIsScanning(true); // 스캔 재시도
             return;
           }
-    
-          setIsScanning(false);
+
+          setIsScanning(false); // 스캔 중지
           await createRoom(scannedData); // 검증된 데이터로 대화방 생성
-          onQRCodeScanned(scannedData);
+          onQRCodeScanned(scannedData); // 부모 컴포넌트로 데이터 전달
         } else {
-          timeoutRef.current = setTimeout(scanQRCode, 100);
+          timeoutRef.current = setTimeout(scanQRCode, 100); // 100ms 후 다시 스캔
         }
       } catch (error) {
-        timeoutRef.current = setTimeout(scanQRCode, 100);
+        console.error('QR 코드 스캔 중 에러 발생:', error);
+        timeoutRef.current = setTimeout(scanQRCode, 100); // 에러 발생 시 100ms 후 다시 스캔
       }
     };
 
@@ -108,9 +109,9 @@ export default function QRScanner({ onQRCodeScanned }: QRScannerProps) {
 
     return () => {
       if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+        clearTimeout(timeoutRef.current); // ✅ 타이머 정리
       }
-      codeReader.reset();
+      codeReader.reset(); // QR 코드 스캐너 초기화
     };
   }, [isScanning]);
 
