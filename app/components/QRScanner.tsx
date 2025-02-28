@@ -1,73 +1,104 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { remove } from 'firebase/database';
 import Webcam from 'react-webcam';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { auth, database as db } from '../../lib/firebase';
-import { ref, set, get } from 'firebase/database';
+import { ref, get, update } from 'firebase/database';
 
-interface QRScannerProps {
-  onQRCodeScanned: (userId: string) => void;
-}
-
-// 대화방 생성 함수
+// ✅ 대화방 생성 함수
 const createRoom = async (scannedUserId: string) => {
-  console.log('QR 코드 스캔 데이터:', scannedUserId); // QR 코드 데이터 확인
+  console.log('QR 코드 스캔 데이터:', scannedUserId);
   const currentUser = auth.currentUser;
   if (!currentUser) {
     alert('로그인이 필요합니다.');
     return;
   }
 
-  // 올바른 방 ID 생성
+  console.log('현재 로그인된 사용자:', currentUser.uid);
+
+  // ✅ 방 ID 생성
   const roomId =
     currentUser.uid < scannedUserId
       ? `${currentUser.uid}_${scannedUserId}`
       : `${scannedUserId}_${currentUser.uid}`;
 
-  console.log('생성된 roomId:', roomId); // 생성된 방 ID 확인
+  console.log('생성된 roomId:', roomId);
 
-  // 대화방 데이터 확인
-  const roomRef = ref(db, `rooms/${roomId}`);
-  const roomSnapshot = await get(roomRef); // ✅ 방 존재 여부 확인
+  if (scannedUserId === roomId || currentUser.uid === scannedUserId) {
+    console.warn('잘못된 방이 생성될 가능성 감지. 생성 중단.');
+    return;
+  }
 
-  if (!roomSnapshot.exists()) {
-    // 스캔된 사용자 이메일 가져오기
-    const scannedUserRef = ref(db, `users/${scannedUserId}`);
-    const scannedUserSnapshot = await get(scannedUserRef);
-    const scannedUserData = scannedUserSnapshot.val();
+  try {
+    const [userSnapshot, roomSnapshot, scannedUserSnapshot, invalidRoomSnapshot] = await Promise.all([
+      get(ref(db, `users/${scannedUserId}`)),
+      get(ref(db, `rooms/${roomId}`)),
+      get(ref(db, `users/${scannedUserId}/email`)),
+      get(ref(db, `rooms/${scannedUserId}`))
+    ]);
 
-    if (!scannedUserData || !scannedUserData.email) {
+    if (!userSnapshot.exists()) {
+      alert('QR 코드의 사용자가 Firebase에 존재하지 않습니다.');
+      return;
+    }
+
+    let scannedUserEmail: string | null = null;
+
+    if (scannedUserSnapshot.exists()) {
+      scannedUserEmail = scannedUserSnapshot.val();
+      console.log('Scanned user email:', scannedUserEmail);
+    } else {
+      console.log('User email does not exist in database.');
       alert('QR 코드로 사용자 정보를 가져올 수 없습니다.');
       return;
     }
 
-    const scannedUserEmail = scannedUserData.email;
+    if (invalidRoomSnapshot.exists()) {
+      console.warn('잘못된 단독 방을 삭제합니다:', scannedUserId);
+      await remove(ref(db, `rooms/${scannedUserId}`));
+    }
 
-    // 대화방 생성
-    await set(roomRef, {
+    if (roomSnapshot.exists()) {
+      console.log('대화방이 이미 존재합니다:', roomId);
+      alert('✅ 대화방이 이미 존재합니다! 대화방 목록에서 확인해주세요.');
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+
+    updates[`rooms/${roomId}`] = {
       name: `${currentUser.email}과 ${scannedUserEmail}의 대화방`,
       timestamp: Date.now(),
-    });
+      participants: {
+        [currentUser.uid]: true,
+        [scannedUserId]: true
+      }
+    };
 
-    // 사용자별 대화방 목록에 추가
-    await set(ref(db, `users/${currentUser.uid}/rooms/${roomId}`), {
+    updates[`users/${currentUser.uid}/rooms/${roomId}`] = {
       name: `${scannedUserEmail}과의 대화`,
-      timestamp: Date.now(),
-    });
+      timestamp: Date.now()
+    };
 
-    await set(ref(db, `users/${scannedUserId}/rooms/${roomId}`), {
+    updates[`users/${scannedUserId}/rooms/${roomId}`] = {
       name: `${currentUser.email}과의 대화`,
-      timestamp: Date.now(),
-    });
-  }
+      timestamp: Date.now()
+    };
 
-  // ✅ 대화방 URL로 리다이렉트
-  window.location.href = `/chat/${roomId}`;
+    await update(ref(db), updates);
+
+    console.log('대화방 생성 완료:', roomId);
+    alert('✅ 대화방 생성이 완료되었습니다! 대화방 목록에 들어가 확인해주세요.');
+  } catch (error) {
+    console.error('대화방 생성 중 오류 발생:', error);
+    alert('대화방 생성 중 오류가 발생했습니다.');
+  }
 };
 
-// QRScanner 컴포넌트
-export default function QRScanner({ onQRCodeScanned }: QRScannerProps) {
+// ✅ `QRScanner` 컴포넌트
+export default function QRScanner() {
   const webcamRef = useRef<Webcam>(null);
   const [isScanning, setIsScanning] = useState(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,22 +117,21 @@ export default function QRScanner({ onQRCodeScanned }: QRScannerProps) {
         if (result) {
           const scannedData = result.getText();
 
-          // ✅ QR 코드 데이터 검증 (올바른 ID 형식인지 확인)
+          // ✅ QR 코드 데이터 검증
           if (!scannedData || scannedData.length < 5) {
             alert('잘못된 QR 코드입니다.');
-            setIsScanning(true); // 스캔 재시도
             return;
           }
 
-          setIsScanning(false); // 스캔 중지
-          await createRoom(scannedData); // 검증된 데이터로 대화방 생성
-          onQRCodeScanned(scannedData); // 부모 컴포넌트로 데이터 전달
+          console.log('스캔된 사용자 ID:', scannedData);
+          setIsScanning(false);
+          await createRoom(scannedData);
         } else {
-          timeoutRef.current = setTimeout(scanQRCode, 100); // 100ms 후 다시 스캔
+          timeoutRef.current = setTimeout(scanQRCode, 100);
         }
       } catch (error) {
         console.error('QR 코드 스캔 중 에러 발생:', error);
-        timeoutRef.current = setTimeout(scanQRCode, 100); // 에러 발생 시 100ms 후 다시 스캔
+        timeoutRef.current = setTimeout(scanQRCode, 100);
       }
     };
 
@@ -109,9 +139,9 @@ export default function QRScanner({ onQRCodeScanned }: QRScannerProps) {
 
     return () => {
       if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current); // ✅ 타이머 정리
+        clearTimeout(timeoutRef.current);
       }
-      codeReader.reset(); // QR 코드 스캐너 초기화
+      codeReader.reset();
     };
   }, [isScanning]);
 

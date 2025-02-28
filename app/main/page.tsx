@@ -2,16 +2,10 @@
 
 import { useState } from 'react';
 import QRScanner from '../components/QRScanner';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function Home() {
   const [showScanner, setShowScanner] = useState(false);
-  const router = useRouter();
-
-  const handleQRCodeScanned = (userId: string) => {
-    router.push(`/chat/${userId}`);
-  };
 
   return (
     <main className="flex min-h-screen flex-col bg-white">
@@ -54,7 +48,7 @@ export default function Home() {
           </button>
         ) : (
           <div className="w-full max-w-md">
-            <QRScanner onQRCodeScanned={handleQRCodeScanned} />
+            <QRScanner />
             <button
               onClick={() => setShowScanner(false)}
               className="mt-4 w-full bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
