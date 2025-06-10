@@ -28,11 +28,21 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [predictedWords, setPredictedWords] = useState<string[]>([]);
   
+  // 테스트용 상태 추가
+  const [testInput, setTestInput] = useState('');
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  
   // 강화된 중복 방지 시스템
   const processedResultsRef = useRef<Map<string, number>>(new Map());
   const lastProcessedTimestampRef = useRef<number>(0);
   const isProcessingRef = useRef<boolean>(false);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 수어 영상 URL 중복 방지를 위한 ref
+  const handledUrlsRef = useRef<Set<string>>(new Set());
+  
+  // 수어 영상 요청 중복 방지를 위한 ref
+  const requestingRef = useRef<boolean>(false);
 
   useEffect(() => { params.then(({ roomId }) => setRoomId(roomId)); }, [params]);
 
@@ -58,6 +68,8 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
     processedResultsRef.current.clear();
     lastProcessedTimestampRef.current = 0;
     isProcessingRef.current = false;
+    handledUrlsRef.current.clear(); // URL 중복 방지 초기화
+    requestingRef.current = false; // 요청 중복 방지 초기화
     
     // 정기적으로 메모리 정리
     const cleanupInterval = setInterval(cleanupProcessedResults, 60000); // 1분마다
@@ -79,7 +91,7 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
     });
   }, [roomId]);
 
-    // 개선된 카운트다운 함수
+  // 개선된 카운트다운 함수
   const runCountdown = useCallback(() => {
     // 기존 카운트다운 정리
     if (countdownIntervalRef.current) {
@@ -225,38 +237,76 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
     });
   }, [roomId, processTranslationResult]);
 
-  // 수어 영상 URL 감지
+  // 수어 영상 URL 감지 - 중복 방지 강화
   useEffect(() => {
     if (!roomId) return;
+    
     const listRef = ref(db, `sign_outputs/${roomId}/combined_urls`);
-    const handled = new Set<string>();
     let unsubscribe = () => {};
 
     (async () => {
-      const snap = await get(query(listRef, limitToLast(1)));
-      let lastKey: string | null = null;
-      snap.forEach(child => { lastKey = child.key; });
-
-      const listenRef = lastKey
-        ? query(listRef, orderByKey(), startAfter(lastKey))
-        : listRef;
-
-      unsubscribe = onChildAdded(listenRef, child => {
-        const { url } = child.val() || {};
-        if (!url || handled.has(url)) return;
-        handled.add(url);
-
-        const sender = auth.currentUser?.email || '시스템';
-        const mref = push(ref(db, `rooms/${roomId}/messages`));
-        set(mref, {
-          text: `[수어 영상 도착 🎥]\n${url}`,
-          sender,
-          timestamp: Date.now(),
+      try {
+        const snap = await get(query(listRef, limitToLast(1)));
+        let lastKey: string | null = null;
+        snap.forEach(child => { 
+          lastKey = child.key;
+          // 기존 URL도 handled에 추가하여 중복 방지
+          const existingUrl = child.val()?.url;
+          if (existingUrl) {
+            handledUrlsRef.current.add(existingUrl);
+          }
         });
-      });
+
+        const listenRef = lastKey
+          ? query(listRef, orderByKey(), startAfter(lastKey))
+          : listRef;
+
+        unsubscribe = onChildAdded(listenRef, child => {
+          const data = child.val();
+          const { url, timestamp } = data || {};
+          
+          // URL 유효성 검사
+          if (!url || typeof url !== 'string' || url.trim() === '') {
+            console.log("❌ 유효하지 않은 URL:", url);
+            return;
+          }
+
+          // 중복 URL 체크 (더 엄격한 검사)
+          const cleanUrl = url.trim();
+          if (handledUrlsRef.current.has(cleanUrl)) {
+            console.log("⚠️ 이미 처리된 URL 무시:", cleanUrl);
+            return;
+          }
+
+          // URL 처리 중복 방지
+          handledUrlsRef.current.add(cleanUrl);
+          
+          console.log("✅ 새로운 수어 영상 URL 처리:", cleanUrl);
+
+          const sender = auth.currentUser?.email || '시스템';
+          const mref = push(ref(db, `rooms/${roomId}/messages`));
+          
+          set(mref, {
+            text: `[수어 영상 도착 🎥]\n${cleanUrl}`,
+            sender,
+            timestamp: timestamp || Date.now(),
+          }).catch(error => {
+            console.error("메시지 저장 실패:", error);
+            // 실패한 경우 handled에서 제거하여 재시도 가능하게 함
+            handledUrlsRef.current.delete(cleanUrl);
+          });
+        });
+
+      } catch (error) {
+        console.error("수어 영상 URL 감지 초기화 실패:", error);
+      }
     })();
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      // cleanup 시 handled URLs 초기화
+      handledUrlsRef.current.clear();
+    };
   }, [roomId]);
 
   // 수어 번역 시작 - 강화된 초기화
@@ -286,6 +336,51 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
     
     runCountdown();
   }, [roomId, isTranslating, runCountdown]);
+
+  // 테스트용 예측 단어 직접 설정 함수
+  const setTestPredictedWords = useCallback(() => {
+    if (!roomId || !testInput.trim()) {
+      alert("예측할 단어들을 입력해주세요. (공백으로 구분)");
+      return;
+    }
+
+    const words = testInput.trim().split(/\s+/);
+    const testData = {
+      ...words.reduce((acc, word, index) => {
+        acc[index] = word;
+        return acc;
+      }, {} as { [key: number]: string }),
+      timestamp: Date.now()
+    };
+
+    // Firebase에 직접 예측 단어 저장
+    set(ref(db, `sign_input_disabled/${roomId}/extracted_words`), testData)
+      .then(() => {
+        console.log("✅ 테스트 예측 단어 설정 완료:", words);
+        setTestInput('');
+      })
+      .catch((error) => {
+        console.error("❌ 테스트 예측 단어 설정 실패:", error);
+        alert("테스트 예측 단어 설정에 실패했습니다.");
+      });
+  }, [roomId, testInput]);
+
+  // 테스트용 예측 단어 리셋 함수
+  const resetTestPredictedWords = useCallback(() => {
+    if (!roomId) return;
+
+    // Firebase에서 예측 단어 데이터 삭제
+    set(ref(db, `sign_input_disabled/${roomId}/extracted_words`), null)
+      .then(() => {
+        console.log("✅ 테스트 예측 단어 리셋 완료");
+        setPredictedWords([]);
+        setTestInput('');
+      })
+      .catch((error) => {
+        console.error("❌ 테스트 예측 단어 리셋 실패:", error);
+        alert("테스트 예측 단어 리셋에 실패했습니다.");
+      });
+  }, [roomId]);
 
   // 최종 번역 제출
   const handleSubmitPrediction = async () => {
@@ -347,31 +442,52 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
     }
   };
 
-  // 수어 영상 요청
+  // 수어 영상 요청 - 중복 방지 강화
   const requestSignVideo = async () => {
     if (!roomId || !newMessage.trim()) return;
     const currentUser = auth.currentUser;
     if (!currentUser) return alert('로그인이 필요합니다.');
 
-    const pendingRef = push(ref(db, `rooms/${roomId}/messages`));
-    set(pendingRef, {
-      text: '[SYSTEM] 수어 영상 제작중…(최대 30초) 잠시만 기다려 주세요!',
-      sender: '시스템',
-      timestamp: Date.now(),
-    });
+    // 중복 요청 방지
+    if (requestingRef.current) {
+      console.log("⚠️ 이미 수어 영상 요청 처리 중...");
+      return;
+    }
 
-    await addDoc(collection(fs, 'user_inputs'), {
-      sentence: newMessage.trim(),
-      roomId,
-      timestamp: Date.now(),
-    });
+    try {
+      requestingRef.current = true;
+      
+      const pendingRef = push(ref(db, `rooms/${roomId}/messages`));
+      await set(pendingRef, {
+        text: '[SYSTEM] 수어 영상 제작중…(최대 30초) 잠시만 기다려 주세요!',
+        sender: '시스템',
+        timestamp: Date.now(),
+      });
 
-    setNewMessage('');
+      await addDoc(collection(fs, 'user_inputs'), {
+        sentence: newMessage.trim(),
+        roomId,
+        timestamp: Date.now(),
+        requestId: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // 고유 요청 ID 추가
+      });
+
+      setNewMessage('');
+      console.log("✅ 수어 영상 요청 완료");
+      
+    } catch (error) {
+      console.error("❌ 수어 영상 요청 실패:", error);
+      alert(`수어 영상 요청 중 오류가 발생했습니다: ${error}`);
+    } finally {
+      // 요청 완료 후 플래그 해제 (약간의 지연을 두어 중복 클릭 방지)
+      setTimeout(() => {
+        requestingRef.current = false;
+      }, 1000);
+    }
   };
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="p-4 border-b flex gap-2">
+      <div className="p-4 border-b flex gap-2 flex-wrap">
         <button
           onClick={triggerSignTranslation}
           className={`bg-green-500 text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-50`}
@@ -381,10 +497,10 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
         </button>
         <button
           onClick={requestSignVideo}
-          className="bg-purple-500 text-white px-4 py-2 rounded hover:opacity-90"
-          disabled={!newMessage.trim()}
+          className="bg-purple-500 text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-50"
+          disabled={!newMessage.trim() || requestingRef.current}
         >
-          🤟 수어 영상 요청
+          🤟 수어 영상 요청{requestingRef.current ? ' (처리중...)' : ''}
         </button>
         <button
           onClick={handleSubmitPrediction}
@@ -394,7 +510,61 @@ export default function ChatRoom({ params }: { params: Promise<{ roomId: string 
         >
           📤 최종 번역 요청 ({predictedWords.length})
         </button>
+        
+        {/* 테스트 패널 토글 버튼 */}
+        <button
+          onClick={() => setShowTestPanel(!showTestPanel)}
+          className={`px-4 py-2 rounded border-2 ${
+            showTestPanel 
+              ? 'bg-red-100 border-red-300 text-red-700' 
+              : 'bg-yellow-100 border-yellow-300 text-yellow-700'
+          } hover:opacity-90`}
+        >
+          🧪 테스트 {showTestPanel ? '닫기' : '열기'}
+        </button>
       </div>
+
+      {/* 테스트 패널 - 예측 단어 설정만 남김 */}
+      {showTestPanel && (
+        <div className="p-4 bg-yellow-50 border-b border-yellow-200">
+          <div className="text-sm font-medium text-yellow-800 mb-2">
+            🧪 테스트 모드 - 예측 단어 시뮬레이션
+          </div>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && setTestPredictedWords()}
+              className="flex-1 p-2 border rounded text-sm"
+              placeholder="예측 단어들을 공백으로 구분해서 입력하세요..."
+            />
+            <button
+              onClick={setTestPredictedWords}
+              className="bg-cyan-500 text-white px-3 py-2 rounded text-sm hover:bg-cyan-600"
+              disabled={!testInput.trim()}
+            >
+              예측 단어 설정
+            </button>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={resetTestPredictedWords}
+              className="bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600"
+            >
+              🗑️ 예측 단어 리셋
+            </button>
+            {predictedWords.length > 0 && (
+              <div className="flex-1 text-sm text-gray-600 flex items-center">
+                현재 예측 단어: <span className="ml-1 font-medium text-blue-700">{predictedWords.join(', ')}</span>
+              </div>
+            )}
+          </div>
+          <div className="text-xs text-yellow-600">
+            💡 실제 젯슨 없이도 예측 단어 기능을 테스트할 수 있습니다. 예측할 단어들을 공백으로 구분해서 입력하거나 리셋 버튼으로 초기화하세요.
+          </div>
+        </div>
+      )}
       
       {/* 현재 예측된 단어들 표시 */}
       {predictedWords.length > 0 && (

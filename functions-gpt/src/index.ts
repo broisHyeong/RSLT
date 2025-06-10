@@ -47,12 +47,19 @@ export const translateOnCreate = onDocumentCreated("predictions/{docId}", async 
   });
   const top3 = docs.sort((a, b) => b.score - a.score).slice(0, 3);
 
-  const prompt = `수어 단어들: ${JSON.stringify(words)}\n\n유사 문장들:\n${top3.map((d,i)=> `${i+1}. \"${d.sentence}\" - 단어들: ${JSON.stringify(d.word_list)}`).join("\n")}\n\n위 정보를 참고하여 가장 자연스럽고 정확한 한국어 문장으로 바꿔줘. JSON 사용 금지, 문장 하나만.`;
+  const prompt = `다음은 수어 단어들의 목록입니다: ${JSON.stringify(words)}.
+이 단어들의 의미를 반영하여 **명확하고 자연스러운 한국어 문장 하나만** 작성해주세요.
+아래는 유사한 의미를 가진 예시 문장들입니다. 다만 일부 문장에는 설명, 부가적인 표현, 메타 정보 등이 포함되어 있을 수 있으니 **의미 참고만 하되 절대 복사하거나 인용하지 마세요.**
+유사 문장 예시:
+${top3.map((d,i)=> `${i+1}. "${d.sentence}" - 관련 단어: ${JSON.stringify(d.word_list)}`).join("\n")}
+- 참고 문장을 그대로 복사하거나, 없는 단어를 추가해 길게 늘어놓는 것도 피해주세요.  
+- 수어 단어에 '?'가 포함되어 있다면, 문장 끝을 '~요?', '~인가요?'등으로 **질문형**으로 마무리해주세요.
+- 단어 ‘몇분?’은 사람 수가 아닌 **시간 단위의 분** 을 의미하는 질문입니다.`;
 
   const chat = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
-      { role: "system", content: "수어 단어를 자연어 문장으로 바꿔주는 AI" },
+      { role: "system", content: "저는 귀가 들리지 않는 사용자를 위해 수어 단어를 자연어 문장으로 바꾸는 엔지니어입니다. 입력되는 수어단어들을 상황에 맞게 자연스러운 문장을 만들어주세요" },
       { role: "user",   content: prompt }
     ],
     temperature: 0.7,
@@ -90,7 +97,11 @@ export const processUserInput = onDocumentCreated("user_inputs/{docId}", async (
   });
   const top3 = docs.sort((a,b)=>b.score-a.score).slice(0,3);
 
-  const prompt = `사용자 문장: \"${sentence}\"\n\n유사 문장들:\n${top3.map((d,i)=> `${i+1}. \"${d.sentence}\" - 단어들: ${JSON.stringify(d.word_list)}`).join("\n")}\n\n이 문장을 수어 단어 배열로 변환해줘. JSON 배열 형식만.`;
+  const prompt = `사용자 문장: \"${sentence}\"\n\n유사 문장들:\n${top3.map((d,i)=> `${i+1}. \"${d.sentence}\" - 단어들: ${JSON.stringify(d.word_list)}`).join("\n")}\n\n이 문장을 핵심적인 수어 단어만 추출해 배열로로 변환해줘. 
+  조건1:출력은 반드시 JSON 배열 형식.
+  조건2:문장의 핵심 의미를 구성하는 단어만 포함 (예: 주어, 동작, 장소, 대상 등)
+  조건3:조사, 어미, 불필요한 연결어(예: "해서", "그리고", "그러니까")는 제외`;
+  
   const gpt = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [ { role:"system", content:"수어 단어 추출 AI" }, { role:"user", content: prompt } ]
